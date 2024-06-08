@@ -1,11 +1,13 @@
+mod files;
+
 use crate::request;
 use crate::response;
 use crate::server;
 
-use std::net::TcpStream;
-use std::io::Result;
 use std::io::ErrorKind;
 use std::io::Read;
+use std::io::Result;
+use std::net::TcpStream;
 use std::sync::Arc;
 
 use request::HttpRequest;
@@ -13,19 +15,21 @@ use response::{HttpResponse, HttpResponseType};
 use server::ServerContext;
 
 fn route(request: HttpRequest) -> HttpResponse {
-    if request.path.starts_with("/echo/") {
+    if request.path.starts_with("/files/") {
+        return files::handle(request);
+    } else if request.path.starts_with("/echo/") {
         return HttpResponse::from_str(HttpResponseType::Ok, &request.path["/echo/".len()..]);
     } else if request.path.starts_with("/user-agent") {
         return HttpResponse::from_str(
             HttpResponseType::Ok,
-            request.header.user_agent.unwrap_or(String::new()).as_str());
+            request.header.user_agent.unwrap_or(String::new()).as_str(),
+        );
     } else if &request.path == "/" {
         return HttpResponse::from_str(HttpResponseType::Ok, "");
     } else {
         return HttpResponse::of(HttpResponseType::NotFound);
     }
 }
-
 
 fn get_request_buffer(mut stream: &TcpStream) -> Result<Vec<u8>> {
     let mut total_buffer: Vec<u8> = Vec::new();

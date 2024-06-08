@@ -26,8 +26,8 @@ struct Args {
 fn make_server_context() -> ServerContext {
     let args = Args::parse();
     println!("directory: {:?}", args.directory);
-    ServerContext{
-        host_files_path: args.directory.and_then(|s| Some(PathBuf::from(s)))
+    ServerContext {
+        host_files_path: args.directory.and_then(|s| Some(PathBuf::from(s))),
     }
 }
 

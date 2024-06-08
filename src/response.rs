@@ -4,6 +4,7 @@ use std::net::TcpStream;
 pub enum HttpResponseType {
     Ok,
     NotFound,
+    InternalServerError,
 }
 
 impl HttpResponseType {
@@ -11,6 +12,7 @@ impl HttpResponseType {
         match self {
             HttpResponseType::Ok => 200,
             HttpResponseType::NotFound => 404,
+            HttpResponseType::InternalServerError => 500,
         }
     }
 
@@ -18,6 +20,7 @@ impl HttpResponseType {
         match self {
             HttpResponseType::Ok => "OK",
             HttpResponseType::NotFound => "Not Found",
+            HttpResponseType::InternalServerError => "Internal Server Error",
         }
     }
 
@@ -43,12 +46,20 @@ impl HttpResponse {
         }
     }
 
+    pub fn from_bytes(response_type: HttpResponseType, body: &[u8]) -> HttpResponse {
+        HttpResponse {
+            response_type: response_type,
+            content_type: String::from("application/octet-stream"),
+            content_length: body.len(),
+            body: Vec::from(body),
+        }
+    }
     pub fn of(response_type: HttpResponseType) -> HttpResponse {
         HttpResponse {
             response_type: response_type,
             content_type: String::from("text/plain"),
             content_length: 0,
-            body: vec![]
+            body: vec![],
         }
     }
 
