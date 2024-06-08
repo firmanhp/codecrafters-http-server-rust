@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 use std::io::Read;
 use std::io::Result;
 use std::net::{TcpListener, TcpStream};
+use std::thread;
 
 mod request;
 use request::HttpRequest;
@@ -48,7 +49,10 @@ fn process(stream: TcpStream, buf: &[u8]) -> Result<()> {
     if request.path.starts_with("/echo/") {
         return Response::respond_200(stream, &request.path["/echo/".len()..]);
     } else if request.path.starts_with("/user-agent") {
-        return Response::respond_200(stream, request.header.user_agent.unwrap_or(String::new()).as_str())
+        return Response::respond_200(
+            stream,
+            request.header.user_agent.unwrap_or(String::new()).as_str(),
+        );
     } else if &request.path == "/" {
         return Response::respond_200(stream, "");
     } else {
@@ -63,11 +67,16 @@ fn main() -> Result<()> {
     for stream in listener.incoming() {
         match stream {
             Ok(_stream) => {
-                println!("accepted new connection");
-                handle_client(_stream)?;
+                println!("Accepted new connection");
+                thread::spawn(|| match handle_client(_stream) {
+                    Err(e) => {
+                        println!("Error in connection: {}", e);
+                    }
+                    Ok(()) => {}
+                });
             }
             Err(e) => {
-                println!("error: {}", e);
+                println!("Error: {}", e);
             }
         }
     }
