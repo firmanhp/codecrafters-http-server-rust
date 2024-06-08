@@ -1,11 +1,13 @@
 use std::io::ErrorKind;
 use std::io::Read;
 use std::io::Result;
-use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 
 mod request;
 use request::HttpRequest;
+
+mod response;
+use response::Response;
 
 fn handle_client(mut stream: TcpStream) -> Result<()> {
     let mut total_buffer: Vec<u8> = Vec::new();
@@ -38,17 +40,18 @@ fn handle_client(mut stream: TcpStream) -> Result<()> {
     process(stream, &total_buffer.as_slice())
 }
 
-fn process(mut stream: TcpStream, buf: &[u8]) -> Result<()> {
+fn process(stream: TcpStream, buf: &[u8]) -> Result<()> {
     println!("buffer: {}", String::from_utf8_lossy(&buf));
     let request = HttpRequest::from_bytes(buf)?;
     println!("request: {}", request);
 
-    if &request.path == "/" {
-        stream.write(b"HTTP/1.1 200 OK\r\n\r\n")?;
+    if request.path.starts_with("/echo/") {
+        return Response::respond_200(stream, &request.path["/echo/".len()..]);
+    } else if &request.path == "/" {
+        return Response::respond_200(stream, "");
     } else {
-        stream.write(b"HTTP/1.1 404 Not Found\r\n\r\n")?;
+        return Response::respond_404(stream);
     }
-    return Ok(());
 }
 
 fn main() -> Result<()> {
