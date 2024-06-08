@@ -1,45 +1,54 @@
 use std::io::{Result, Write};
 use std::net::TcpStream;
 
-pub enum ResponseType {
+pub enum HttpResponseType {
     Ok,
     NotFound,
 }
 
-impl ResponseType {
-    pub fn to_code(&self) -> u16 {
+impl HttpResponseType {
+    fn to_code(&self) -> u16 {
         match self {
-            ResponseType::Ok => 200,
-            ResponseType::NotFound => 404,
+            HttpResponseType::Ok => 200,
+            HttpResponseType::NotFound => 404,
         }
     }
 
-    pub fn to_str(&self) -> &str {
+    fn to_str(&self) -> &str {
         match self {
-            ResponseType::Ok => "OK",
-            ResponseType::NotFound => "Not Found",
+            HttpResponseType::Ok => "OK",
+            HttpResponseType::NotFound => "Not Found",
         }
     }
 
-    pub fn to_raw_line(&self) -> String {
+    fn to_raw_line(&self) -> String {
         String::from(format!("HTTP/1.1 {} {}", self.to_code(), self.to_str()))
     }
 }
 
-pub struct Response {
-    response_type: ResponseType,
+pub struct HttpResponse {
+    response_type: HttpResponseType,
     content_type: String,
     content_length: usize,
     body: Vec<u8>,
 }
 
-impl Response {
-    fn from_str(response_type: ResponseType, body: &str) -> Response {
-        Response {
+impl HttpResponse {
+    pub fn from_str(response_type: HttpResponseType, body: &str) -> HttpResponse {
+        HttpResponse {
             response_type: response_type,
             content_type: String::from("text/plain"),
             content_length: body.len(),
             body: body.to_owned().into_bytes(),
+        }
+    }
+
+    pub fn of(response_type: HttpResponseType) -> HttpResponse {
+        HttpResponse {
+            response_type: response_type,
+            content_type: String::from("text/plain"),
+            content_length: 0,
+            body: vec![]
         }
     }
 
@@ -63,15 +72,7 @@ impl Response {
         result
     }
 
-    fn respond(mut stream: TcpStream, response: &Response) -> Result<()> {
+    pub fn respond(mut stream: TcpStream, response: &HttpResponse) -> Result<()> {
         stream.write_all(&response.as_bytes())
-    }
-
-    pub fn respond_200(stream: TcpStream, body: &str) -> Result<()> {
-        Self::respond(stream, &Response::from_str(ResponseType::Ok, body))
-    }
-
-    pub fn respond_404(stream: TcpStream) -> Result<()> {
-        Self::respond(stream, &Response::from_str(ResponseType::NotFound, ""))
     }
 }
