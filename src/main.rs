@@ -47,6 +47,8 @@ fn process(stream: TcpStream, buf: &[u8]) -> Result<()> {
 
     if request.path.starts_with("/echo/") {
         return Response::respond_200(stream, &request.path["/echo/".len()..]);
+    } else if request.path.starts_with("/user-agent") {
+        return Response::respond_200(stream, request.header.user_agent.unwrap_or(String::new()).as_str())
     } else if &request.path == "/" {
         return Response::respond_200(stream, "");
     } else {
