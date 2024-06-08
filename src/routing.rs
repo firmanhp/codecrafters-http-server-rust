@@ -1,13 +1,16 @@
 use crate::request;
 use crate::response;
+use crate::server;
 
 use std::net::TcpStream;
 use std::io::Result;
 use std::io::ErrorKind;
 use std::io::Read;
+use std::sync::Arc;
 
 use request::HttpRequest;
 use response::{HttpResponse, HttpResponseType};
+use server::ServerContext;
 
 fn route(request: HttpRequest) -> HttpResponse {
     if request.path.starts_with("/echo/") {
@@ -55,11 +58,11 @@ fn get_request_buffer(mut stream: &TcpStream) -> Result<Vec<u8>> {
     Ok(total_buffer)
 }
 
-pub fn handle_connection(stream: TcpStream) -> Result<()> {
+pub fn handle_connection(stream: TcpStream, server_context: Arc<ServerContext>) -> Result<()> {
     let buf = get_request_buffer(&stream)?;
     println!("buffer: {}", String::from_utf8_lossy(&buf));
 
-    let request = HttpRequest::from_bytes(&buf)?;
+    let request = HttpRequest::from_bytes(&buf, server_context)?;
     println!("request: {}", request);
 
     let response = route(request);

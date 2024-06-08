@@ -1,9 +1,14 @@
+use crate::server;
+
 use std::fmt;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::io::Result;
+use std::sync::Arc;
 
 use itertools::Itertools;
+
+use server::ServerContext;
 
 #[derive(Debug)]
 pub enum HttpRequestType {
@@ -86,6 +91,7 @@ pub struct HttpRequest {
     pub path: String,
     pub header: HttpRequestHeader,
     pub body: Option<String>,
+    pub context: Arc<ServerContext>,
 }
 
 impl fmt::Display for HttpRequest {
@@ -100,7 +106,7 @@ impl fmt::Display for HttpRequest {
 }
 
 impl HttpRequest {
-    pub fn from_bytes(buf: &[u8]) -> Result<HttpRequest> {
+    pub fn from_bytes(buf: &[u8], server_context: Arc<ServerContext>) -> Result<HttpRequest> {
         let buf_str = String::from_utf8_lossy(buf);
         let mut request_type: HttpRequestType = HttpRequestType::Get;
         let mut path: String = String::from("");
@@ -131,6 +137,7 @@ impl HttpRequest {
             path: path,
             header: HttpRequestHeader::from_buffer_lines(&req_lines[2..]),
             body: None,
+            context: server_context
         })
     }
 }
