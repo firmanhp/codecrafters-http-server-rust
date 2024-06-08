@@ -65,12 +65,12 @@ impl HttpRequestHeader {
                 println!("WARNING: ignoring header {}", *line);
                 continue;
             }
-            match key_value[0] {
-                "Host" => {
+            match key_value[0].to_lowercase().as_str() {
+                "host" => {
                     header.host = Some(String::from(key_value[1]));
                 }
-                "User-Agent" => header.user_agent = Some(String::from(key_value[1])),
-                "Accept" => header.accept = Some(String::from(key_value[1])),
+                "user-agent" => header.user_agent = Some(String::from(key_value[1])),
+                "accept" => header.accept = Some(String::from(key_value[1])),
                 _ => {
                     println!("WARNING: unknown header key: {}", key_value[0]);
                 }
