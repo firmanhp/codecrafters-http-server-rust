@@ -62,11 +62,22 @@ fn get_request_buffer(mut stream: &TcpStream) -> Result<Vec<u8>> {
     Ok(total_buffer)
 }
 
+fn get_body_buffer(mut stream: &TcpStream, size: usize) -> Result<Vec<u8>> {
+    let mut buffer: Vec<u8> = vec![];
+    buffer.resize(size, 0);
+    stream.read_exact(buffer.as_mut_slice())?;
+    Ok(buffer)
+}
+
 pub fn handle_connection(stream: TcpStream, server_context: Arc<ServerContext>) -> Result<()> {
     let buf = get_request_buffer(&stream)?;
-    println!("buffer: {}", String::from_utf8_lossy(&buf));
+    println!("header buffer: {}", String::from_utf8_lossy(&buf));
 
-    let request = HttpRequest::from_bytes(&buf, server_context)?;
+    let mut request = HttpRequest::from_bytes(&buf, server_context)?;
+    let content_length = request.header.content_length.unwrap_or(0);
+    if content_length > 0 {
+        request.body = get_body_buffer(&stream, content_length)?;
+    }
     println!("request: {}", request);
 
     let response = route(request);

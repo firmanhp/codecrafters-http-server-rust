@@ -10,7 +10,7 @@ use itertools::Itertools;
 
 use server::ServerContext;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum HttpRequestType {
     Get,
     Post,
@@ -45,6 +45,8 @@ pub struct HttpRequestHeader {
     pub host: Option<String>,
     pub user_agent: Option<String>,
     pub accept: Option<String>,
+    pub content_type: Option<String>,
+    pub content_length: Option<usize>,
 }
 
 impl fmt::Display for HttpRequestHeader {
@@ -53,6 +55,8 @@ impl fmt::Display for HttpRequestHeader {
         write!(f, "Host: {:?}, ", self.host)?;
         write!(f, "User-Agent: {:?}, ", self.user_agent)?;
         write!(f, "Accept: {:?}, ", self.accept)?;
+        write!(f, "Content-Type: {:?}, ", self.content_type)?;
+        write!(f, "Content-Length: {:?}, ", self.content_length)?;
         write!(f, "}}")
     }
 }
@@ -76,6 +80,10 @@ impl HttpRequestHeader {
                 }
                 "user-agent" => header.user_agent = Some(String::from(key_value[1])),
                 "accept" => header.accept = Some(String::from(key_value[1])),
+                "content-type" => header.content_type = Some(String::from(key_value[1])),
+                "content-length" => {
+                    header.content_length = Some(key_value[1].parse::<usize>().unwrap_or(0))
+                }
                 _ => {
                     println!("WARNING: unknown header key: {}", key_value[0]);
                 }
@@ -90,7 +98,7 @@ pub struct HttpRequest {
     pub req_type: HttpRequestType,
     pub path: String,
     pub header: HttpRequestHeader,
-    pub body: Option<String>,
+    pub body: Vec<u8>,
     pub context: Arc<ServerContext>,
 }
 
@@ -100,7 +108,7 @@ impl fmt::Display for HttpRequest {
         write!(f, "Type: {}, ", self.req_type)?;
         write!(f, "Path: {}, ", self.path)?;
         write!(f, "Header: {}, ", self.header)?;
-        write!(f, "Body: {:?}, ", self.body)?;
+        write!(f, "Body (len): {}, ", self.body.len())?;
         write!(f, "}}")
     }
 }
@@ -136,8 +144,8 @@ impl HttpRequest {
             req_type: request_type,
             path: path,
             header: HttpRequestHeader::from_buffer_lines(&req_lines[2..]),
-            body: None,
-            context: server_context
+            body: vec![],
+            context: server_context,
         })
     }
 }

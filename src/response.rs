@@ -5,6 +5,9 @@ pub enum HttpResponseType {
     Ok,
     NotFound,
     InternalServerError,
+    Created,
+    ServiceUnavailable,
+    Conflict,
 }
 
 impl HttpResponseType {
@@ -13,6 +16,9 @@ impl HttpResponseType {
             HttpResponseType::Ok => 200,
             HttpResponseType::NotFound => 404,
             HttpResponseType::InternalServerError => 500,
+            HttpResponseType::Created => 200,
+            HttpResponseType::ServiceUnavailable => 503,
+            HttpResponseType::Conflict => 409,
         }
     }
 
@@ -21,6 +27,9 @@ impl HttpResponseType {
             HttpResponseType::Ok => "OK",
             HttpResponseType::NotFound => "Not Found",
             HttpResponseType::InternalServerError => "Internal Server Error",
+            HttpResponseType::Created => "Created",
+            HttpResponseType::ServiceUnavailable => "Service Unavailable",
+            HttpResponseType::Conflict => "Conflict",
         }
     }
 
@@ -39,7 +48,7 @@ pub struct HttpResponse {
 impl HttpResponse {
     pub fn from_str(response_type: HttpResponseType, body: &str) -> HttpResponse {
         HttpResponse {
-            response_type: response_type,
+            response_type,
             content_type: String::from("text/plain"),
             content_length: body.len(),
             body: body.to_owned().into_bytes(),
@@ -48,7 +57,7 @@ impl HttpResponse {
 
     pub fn from_bytes(response_type: HttpResponseType, body: &[u8]) -> HttpResponse {
         HttpResponse {
-            response_type: response_type,
+            response_type,
             content_type: String::from("application/octet-stream"),
             content_length: body.len(),
             body: Vec::from(body),
@@ -56,7 +65,7 @@ impl HttpResponse {
     }
     pub fn of(response_type: HttpResponseType) -> HttpResponse {
         HttpResponse {
-            response_type: response_type,
+            response_type,
             content_type: String::from("text/plain"),
             content_length: 0,
             body: vec![],
