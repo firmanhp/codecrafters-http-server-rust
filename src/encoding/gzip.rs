@@ -2,12 +2,12 @@ use std::io::Result;
 
 use super::types::EncodedContent;
 
-pub fn encode(_content: EncodedContent) -> Result<EncodedContent> {
+pub fn encode(content: EncodedContent) -> Result<EncodedContent> {
     // TODO
-    unimplemented!()
+    Ok(content)
 }
 
-pub fn decode(_content: EncodedContent) -> Result<EncodedContent> {
+pub fn decode(content: EncodedContent) -> Result<EncodedContent> {
     // TODO
-    unimplemented!()
+    Ok(content)
 }
