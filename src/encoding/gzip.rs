@@ -1,19 +1,25 @@
-use std::io::Result;
+use std::io::{Read, Result, Write};
+
+use flate2::{read::GzDecoder, write::ZlibEncoder, Compression};
 
 use super::types::{ContentEncoding, EncodedContent};
 
 pub fn encode(content: EncodedContent) -> Result<EncodedContent> {
-    // TODO
+    let buffer = content.buffer;
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(buffer.as_slice())?;
     Ok(EncodedContent {
         encoding_type: ContentEncoding::Gzip,
-        ..content
+        buffer: encoder.finish()?,
     })
 }
 
 pub fn decode(content: EncodedContent) -> Result<EncodedContent> {
-    // TODO
+    let mut decoder = GzDecoder::new(content.buffer.as_slice());
+    let mut bytes_result: Vec<u8> = vec![];
+    decoder.read_to_end(&mut bytes_result)?;
     Ok(EncodedContent {
         encoding_type: ContentEncoding::NoEncoding,
-        ..content
+        buffer: bytes_result,
     })
 }
