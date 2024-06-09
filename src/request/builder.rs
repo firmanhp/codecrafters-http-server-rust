@@ -1,4 +1,4 @@
-use std::{io::Error, io::ErrorKind, io::Result, sync::Arc};
+use std::{collections::HashSet, io::{Error, ErrorKind, Result}, sync::Arc};
 
 use itertools::Itertools;
 
@@ -13,7 +13,7 @@ pub struct HttpRequestHeaderBuilder {
     accept: Option<String>,
     content_type: Option<String>,
     content_length: Option<usize>,
-    accept_encoding: Option<ContentEncoding>,
+    accept_encoding: HashSet<ContentEncoding>,
 }
 
 impl HttpRequestHeaderBuilder {
@@ -33,7 +33,8 @@ impl HttpRequestHeaderBuilder {
             "accept" => self.accept(String::from(key_value[1])),
             "content-type" => self.content_type(String::from(key_value[1])),
             "content-length" => self.content_length(key_value[1].parse::<usize>().unwrap_or(0)),
-            "accept-encoding" => self.accept_encoding(ContentEncoding::from(key_value[1])),
+            // encoding can be multiple schemas separated by a comma
+            "accept-encoding" => self.accept_encodings_from_line(key_value[1]),
             _ => {
                 println!("WARNING: unknown header key: {}", key_value[0]);
                 self
@@ -67,19 +68,35 @@ impl HttpRequestHeaderBuilder {
     }
 
     pub fn accept_encoding(mut self: Self, accept_encoding: ContentEncoding) -> Self {
-        self.accept_encoding = Some(accept_encoding);
+        self.accept_encoding.insert(accept_encoding);
         self
     }
 
+    fn accept_encodings_from_line(self: Self, line: &str) -> Self {
+        let delimiter = ", ";
+        let encodings = line.split(delimiter).collect_vec();
+        let mut builder = self;
+        for encoding in encodings {
+            builder = builder.accept_encoding(ContentEncoding::from(encoding));
+        }
+        builder
+    }
+
     pub fn build(self: Self) -> HttpRequestHeader {
-        HttpRequestHeader {
+        let mut header = HttpRequestHeader {
             host: self.host.unwrap_or(String::from("unknown")),
             user_agent: self.user_agent.unwrap_or(String::from("unknown")),
             accept: self.accept.unwrap_or(String::from("*/*")),
             content_type: self.content_type.unwrap_or(String::from("")),
             content_length: self.content_length.unwrap_or(0),
-            accept_encoding: self.accept_encoding.unwrap_or(ContentEncoding::NoEncoding),
+            accept_encoding: self.accept_encoding,
+        };
+
+        // accept-encoding must contain at least 1 encoding
+        if header.accept_encoding.is_empty() {
+            header.accept_encoding.insert(ContentEncoding::NoEncoding);
         }
+        header
     }
 }
 

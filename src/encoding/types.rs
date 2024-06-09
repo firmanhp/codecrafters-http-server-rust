@@ -2,7 +2,7 @@ use crate::encoding::gzip;
 
 use std::io::Result;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum ContentEncoding {
     NoEncoding,
     Gzip,

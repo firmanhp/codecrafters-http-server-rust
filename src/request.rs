@@ -3,6 +3,7 @@ mod builder;
 use crate::encoding::types::ContentEncoding;
 use crate::server;
 
+use std::collections::HashSet;
 use std::fmt;
 use std::io::Error;
 use std::io::ErrorKind;
@@ -52,7 +53,7 @@ pub struct HttpRequestHeader {
     pub accept: String,
     pub content_type: String,
     pub content_length: usize,
-    pub accept_encoding: ContentEncoding,
+    pub accept_encoding: HashSet<ContentEncoding>,
 }
 
 impl fmt::Display for HttpRequestHeader {
