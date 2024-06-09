@@ -15,10 +15,10 @@ pub enum HttpResponseType {
 }
 
 pub struct HttpResponse {
-    response_type: HttpResponseType,
-    content_type: String,
-    content_length: usize,
-    body: EncodedContent,
+    pub response_type: HttpResponseType,
+    pub content_type: String,
+    pub content_length: usize,
+    pub body: EncodedContent,
 }
 
 impl HttpResponseType {
@@ -58,8 +58,7 @@ impl HttpResponse {
         result.extend_from_slice(self.response_type.to_raw_line().as_bytes());
         result.extend_from_slice(b"\r\n");
         
-        let has_body = self.body.buffer.len() > 0;
-        if has_body {
+        if self.has_body() {
             result.extend_from_slice(b"Content-Type: ");
             result.extend_from_slice(self.content_type.as_bytes());
             result.extend_from_slice(b"\r\n");
@@ -77,7 +76,7 @@ impl HttpResponse {
 
         result.extend_from_slice(b"\r\n");
         // body...
-        if has_body {
+        if self.has_body() {
             result.extend_from_slice(&self.body.buffer);
         }
         result
@@ -85,5 +84,9 @@ impl HttpResponse {
 
     pub fn respond(mut stream: TcpStream, response: &HttpResponse) -> Result<()> {
         stream.write_all(&response.as_bytes())
+    }
+
+    pub fn has_body(self: &Self) -> bool {
+        return self.body.buffer.len() > 0;
     }
 }

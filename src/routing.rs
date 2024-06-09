@@ -38,6 +38,15 @@ pub fn handle_connection(stream: TcpStream, server_context: Arc<ServerContext>) 
     let request = HttpRequest::read_from_stream(&stream, server_context)?;
     println!("request: {}", request);
 
-    let response = route(request);
+    let requested_encoding = request.header.accept_encoding;
+    let mut response = route(request);
+
+    // Match response's encoding with request's.
+    if response.has_body() && (requested_encoding != response.body.encoding_type) {
+        // Reencode if they differ
+        response = HttpResponseBuilder::from(response)
+            .encode_body(requested_encoding)?
+            .build();
+    }
     HttpResponse::respond(stream, &response)
 }

@@ -1,3 +1,6 @@
+use std::io::Result;
+
+use crate::encoding::types::ContentEncoding;
 use crate::encoding::types::EncodedContent;
 
 use super::HttpResponse;
@@ -34,6 +37,13 @@ impl HttpResponseBuilder {
     pub fn body(mut self: Self, body: EncodedContent) -> Self {
         self.body = Some(body);
         self
+    }
+
+    pub fn encode_body(mut self: Self, encoding_type: ContentEncoding) -> Result<Self> {
+        if !self.body.is_none() {
+            self.body = Some(self.body.unwrap().encode(encoding_type)?);
+        }
+        Ok(self)
     }
 
     pub fn build(self: Self) -> HttpResponse {
