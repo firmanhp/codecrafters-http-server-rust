@@ -1,12 +1,18 @@
+mod builder;
+
+use crate::encoding::types::ContentEncoding;
 use crate::server;
 
 use std::fmt;
 use std::io::Error;
 use std::io::ErrorKind;
+use std::io::Read;
 use std::io::Result;
+use std::net::TcpStream;
 use std::sync::Arc;
 
-use itertools::Itertools;
+use builder::HttpRequestBuilder;
+use builder::HttpRequestHeaderBuilder;
 
 use server::ServerContext;
 
@@ -34,19 +40,19 @@ impl HttpRequestType {
             "DELETE" => Ok(HttpRequestType::Delete),
             _ => Err(Error::new(
                 ErrorKind::InvalidData,
-                format!("Request line is invalid: {}", type_str),
+                format!("Request type is invalid: {}", type_str),
             )),
         }
     }
 }
 
-#[derive(Default)]
 pub struct HttpRequestHeader {
-    pub host: Option<String>,
-    pub user_agent: Option<String>,
-    pub accept: Option<String>,
-    pub content_type: Option<String>,
-    pub content_length: Option<usize>,
+    pub host: String,
+    pub user_agent: String,
+    pub accept: String,
+    pub content_type: String,
+    pub content_length: usize,
+    pub accept_encoding: ContentEncoding,
 }
 
 impl fmt::Display for HttpRequestHeader {
@@ -57,45 +63,13 @@ impl fmt::Display for HttpRequestHeader {
         write!(f, "Accept: {:?}, ", self.accept)?;
         write!(f, "Content-Type: {:?}, ", self.content_type)?;
         write!(f, "Content-Length: {:?}, ", self.content_length)?;
+        write!(f, "Accept-Encoding: {:?}, ", self.accept_encoding)?;
         write!(f, "}}")
     }
 }
 
-impl HttpRequestHeader {
-    fn from_buffer_lines(lines: &[&str]) -> HttpRequestHeader {
-        let mut header: HttpRequestHeader = Default::default();
-        for line in lines {
-            // We reached the end here i.e. \r\n\r\n
-            if *line == "" {
-                break;
-            }
-            let key_value = (*line).splitn(2, ": ").collect_vec();
-            if key_value.len() != 2 {
-                println!("WARNING: ignoring header {}", *line);
-                continue;
-            }
-            match key_value[0].to_lowercase().as_str() {
-                "host" => {
-                    header.host = Some(String::from(key_value[1]));
-                }
-                "user-agent" => header.user_agent = Some(String::from(key_value[1])),
-                "accept" => header.accept = Some(String::from(key_value[1])),
-                "content-type" => header.content_type = Some(String::from(key_value[1])),
-                "content-length" => {
-                    header.content_length = Some(key_value[1].parse::<usize>().unwrap_or(0))
-                }
-                _ => {
-                    println!("WARNING: unknown header key: {}", key_value[0]);
-                }
-            }
-        }
-
-        header
-    }
-}
-
 pub struct HttpRequest {
-    pub req_type: HttpRequestType,
+    pub request_type: HttpRequestType,
     pub path: String,
     pub header: HttpRequestHeader,
     pub body: Vec<u8>,
@@ -105,7 +79,7 @@ pub struct HttpRequest {
 impl fmt::Display for HttpRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "HttpRequest{{")?;
-        write!(f, "Type: {}, ", self.req_type)?;
+        write!(f, "Type: {}, ", self.request_type)?;
         write!(f, "Path: {}, ", self.path)?;
         write!(f, "Header: {}, ", self.header)?;
         write!(f, "Body (len): {}, ", self.body.len())?;
@@ -114,38 +88,59 @@ impl fmt::Display for HttpRequest {
 }
 
 impl HttpRequest {
-    pub fn from_bytes(buf: &[u8], server_context: Arc<ServerContext>) -> Result<HttpRequest> {
-        let buf_str = String::from_utf8_lossy(buf);
-        let mut request_type: HttpRequestType = HttpRequestType::Get;
-        let mut path: String = String::from("");
+    pub fn read_from_stream(
+        mut stream: &TcpStream,
+        server_context: Arc<ServerContext>,
+    ) -> Result<HttpRequest> {
+        let mut read_buffer: Vec<u8> = vec![];
+        read_buffer.reserve(128);
+        read_line(&mut stream, &mut read_buffer)?;
+        let mut request_builder = HttpRequestBuilder::from_request_line(
+            &String::from_utf8_lossy(&read_buffer),
+            server_context,
+        )?;
 
-        let delimiter: &str = "\r\n";
-        let req_lines = buf_str.split(delimiter).collect_vec();
-
-        if req_lines.len() == 0 {
-            return Err(Error::new(ErrorKind::InvalidData, "Unspecified request"));
-        }
-
-        // First request line
-        if req_lines.len() >= 1 {
-            let req_line = req_lines[0].split(" ").collect_vec();
-            if req_line.len() != 3 {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "Request line is invalid",
-                ));
+        // Read for request header lines
+        let mut request_header_builder = HttpRequestHeaderBuilder::new();
+        loop {
+            // Clear read buffer, Read for one line
+            read_buffer.clear();
+            read_line(&mut stream, &mut read_buffer)?;
+            if read_buffer.is_empty() {
+                // end streaming
+                break;
             }
-            request_type = HttpRequestType::from_str(req_line[0])?;
-            path = String::from(req_line[1]);
-            // ignore HTTP version from now
+            request_header_builder =
+                request_header_builder.apply_from_line(&String::from_utf8_lossy(&read_buffer));
+        }
+        let request_header = request_header_builder.build();
+        if request_header.content_length > 0 {
+            let mut body: Vec<u8> = vec![];
+            body.resize(request_header.content_length, 0);
+            stream.read_exact(body.as_mut_slice())?;
+            request_builder = request_builder.body(body);
         }
 
-        Ok(HttpRequest {
-            req_type: request_type,
-            path: path,
-            header: HttpRequestHeader::from_buffer_lines(&req_lines[2..]),
-            body: vec![],
-            context: server_context,
-        })
+        Ok(request_builder.header(request_header).build())
     }
+}
+
+fn read_line(mut stream: &TcpStream, read_buffer: &mut Vec<u8>) -> Result<()> {
+    let delimiter: &[u8] = b"\r\n";
+    // Read for first line
+    loop {
+        // Can probably be optimized
+        let mut single_byte: [u8; 1] = [0];
+        stream.read_exact(&mut single_byte)?;
+        read_buffer.push(single_byte[0]);
+        if single_byte[0] == delimiter[delimiter.len() - 1]
+            && read_buffer.len() >= delimiter.len()
+            && &read_buffer[read_buffer.len() - delimiter.len()..] == delimiter
+        {
+            // Remove delimiter from buffer
+            read_buffer.truncate(read_buffer.len() - delimiter.len());
+            break;
+        }
+    }
+    Ok(())
 }

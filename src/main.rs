@@ -2,6 +2,7 @@ mod request;
 mod response;
 mod routing;
 mod server;
+mod encoding;
 
 use std::io::Result;
 use std::net::TcpListener;

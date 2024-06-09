@@ -1,5 +1,7 @@
+use crate::encoding::types::EncodedContent;
 use crate::request;
 use crate::response;
+use crate::response::builder::HttpResponseBuilder;
 use crate::server;
 
 use request::{HttpRequest, HttpRequestType};
@@ -12,16 +14,16 @@ use std::io::Write;
 pub fn handle(request: HttpRequest) -> HttpResponse {
     let context: &ServerContext = request.context.as_ref();
     if context.host_files_path.is_none() {
-        return HttpResponse::of(HttpResponseType::ServiceUnavailable);
+        return HttpResponseBuilder::new(HttpResponseType::ServiceUnavailable).build();
     }
 
-    if request.req_type == HttpRequestType::Get {
+    if request.request_type == HttpRequestType::Get {
         return handle_get(request);
-    } else if request.req_type == HttpRequestType::Post {
+    } else if request.request_type == HttpRequestType::Post {
         return handle_post(request);
     }
 
-    HttpResponse::of(HttpResponseType::NotFound)
+    HttpResponseBuilder::new(HttpResponseType::NotFound).build()
 }
 
 fn handle_post(request: HttpRequest) -> HttpResponse {
@@ -29,16 +31,17 @@ fn handle_post(request: HttpRequest) -> HttpResponse {
     let filename = &request.path["/files/".len()..];
     let path = context.host_files_path.as_ref().unwrap().join(filename);
     if path.exists() {
-        return HttpResponse::of(HttpResponseType::Conflict);
+        return HttpResponseBuilder::new(HttpResponseType::Conflict).build();
     }
 
     let file = File::create(path);
     match file.and_then(|mut file| file.write_all(request.body.as_slice())) {
-        Ok(_) => HttpResponse::of(HttpResponseType::Created),
-        Err(err) => HttpResponse::from_str(
-            HttpResponseType::InternalServerError,
-            format!("Error when writing: {}", err).as_str(),
-        ),
+        Ok(_) => HttpResponseBuilder::new(HttpResponseType::Created).build(),
+        Err(err) => HttpResponseBuilder::new(HttpResponseType::InternalServerError)
+            .body(EncodedContent::from(
+                format!("Error when writing: {}", err).into_bytes(),
+            ))
+            .build(),
     }
 }
 
@@ -47,18 +50,18 @@ fn handle_get(request: HttpRequest) -> HttpResponse {
     let filename = &request.path["/files/".len()..];
     let path = context.host_files_path.as_ref().unwrap().join(filename);
     if !path.exists() {
-        return HttpResponse::of(HttpResponseType::NotFound);
+        return HttpResponseBuilder::new(HttpResponseType::NotFound).build();
     }
 
     match fs::read(path) {
-        Ok(contents) => {
-            return HttpResponse::from_bytes(HttpResponseType::Ok, contents.as_slice());
-        }
+        Ok(contents) => HttpResponseBuilder::new(HttpResponseType::Ok)
+            .content_type(String::from("application/octet-stream"))
+            .body(EncodedContent::from(contents))
+            .build(),
         Err(err) => {
-            return HttpResponse::from_str(
-                HttpResponseType::InternalServerError,
-                format!("Error: {}", err).as_str(),
-            )
+            return HttpResponseBuilder::new(HttpResponseType::InternalServerError)
+                .body(EncodedContent::from(format!("Error: {}", err).into_bytes()))
+                .build()
         }
     }
 }
