@@ -1,12 +1,12 @@
 use std::io::{Read, Result, Write};
 
-use flate2::{read::GzDecoder, write::ZlibEncoder, Compression};
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 
 use super::types::{ContentEncoding, EncodedContent};
 
 pub fn encode(content: EncodedContent) -> Result<EncodedContent> {
     let buffer = content.buffer;
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(buffer.as_slice())?;
     Ok(EncodedContent {
         encoding_type: ContentEncoding::Gzip,
