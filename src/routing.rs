@@ -44,6 +44,7 @@ pub fn handle_connection(stream: TcpStream, server_context: Arc<ServerContext>) 
     // Match response's encoding with request's.
     if response.has_body() && (requested_encoding != response.body.encoding_type) {
         // Reencode if they differ
+        // println!("requested encoding {:?}", requested_encoding);
         response = HttpResponseBuilder::from(response)
             .encode_body(requested_encoding)?
             .build();
