@@ -4,7 +4,7 @@
 
 This is an attempt of codecrafters.io challenge: Build your own HTTP server using Rust.
 
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/b6ad6ba9-d2e1-45f9-85c6-fbf71ff3729c)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+[![progress-banner](https://backend.codecrafters.io/progress/http-server/b6ad6ba9-d2e1-45f9-85c6-fbf71ff3729c)](https://app.codecrafters.io/users/firmanhp?r=2qF)
 
 This is a starting point for Rust solutions to the
 ["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
