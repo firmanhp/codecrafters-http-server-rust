@@ -1,4 +1,8 @@
-use std::{collections::HashSet, io::{Error, ErrorKind, Result}, sync::Arc};
+use std::{
+    collections::HashSet,
+    io::{Error, ErrorKind, Result},
+    sync::Arc,
+};
 
 use itertools::Itertools;
 
@@ -25,7 +29,7 @@ impl HttpRequestHeaderBuilder {
         let key_value = line.splitn(2, ": ").collect_vec();
         if key_value.len() < 2 {
             println!("WARNING: ignoring header {}", line);
-            return self
+            return self;
         }
         match key_value[0].to_lowercase().as_str() {
             "host" => self.host(String::from(key_value[1])),
@@ -77,7 +81,12 @@ impl HttpRequestHeaderBuilder {
         let encodings = line.split(delimiter).collect_vec();
         let mut builder = self;
         for encoding in encodings {
-            builder = builder.accept_encoding(ContentEncoding::from(encoding));
+            match ContentEncoding::from(encoding) {
+                Some(encoding) => {
+                    builder = builder.accept_encoding(encoding);
+                }
+                _ => {}
+            }
         }
         builder
     }

@@ -23,10 +23,10 @@ impl Default for EncodedContent {
 }
 
 impl ContentEncoding {
-    pub fn from(str: &str) -> ContentEncoding {
+    pub fn from(str: &str) -> Option<ContentEncoding> {
         match str.to_lowercase().as_str() {
-            "gzip" => ContentEncoding::Gzip,
-            _ => ContentEncoding::NoEncoding,
+            "gzip" => Some(ContentEncoding::Gzip),
+            _ => None,
         }
     }
 
