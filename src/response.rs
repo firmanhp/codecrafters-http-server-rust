@@ -16,7 +16,7 @@ impl HttpResponseType {
             HttpResponseType::Ok => 200,
             HttpResponseType::NotFound => 404,
             HttpResponseType::InternalServerError => 500,
-            HttpResponseType::Created => 200,
+            HttpResponseType::Created => 201,
             HttpResponseType::ServiceUnavailable => 503,
             HttpResponseType::Conflict => 409,
         }
